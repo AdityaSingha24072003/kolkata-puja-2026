@@ -425,12 +425,13 @@
     }
 
     function getPandalData(p) {
-      const name = getPandalField(p, ['Pandal___C', 'Pandal_Name', 'Name', 'pandal_name', 'pandal']) || 'Durga Puja Pandal';
-      const category = getPandalField(p, ['Puja Category', 'Puja_Category', 'Puja_Categ', 'Category', 'puja_category', 'Puja_Cat']) || 'Sarbojanin';
-      const themeTitle = getPandalField(p, ['Theme Title', 'Theme_Title', 'Theme_Titl', 'Theme', 'Theme_Name', 'theme_title']) || '';
-      const themeDetails = getPandalField(p, ['Theme Details', 'Theme_Details', 'Theme_Deta', 'Theme_Desc', 'Description', 'theme_details']) || '';
-      const locality = getPandalField(p, ['Locality', 'locality', 'Location', 'Zone', 'Address']) || '';
-
+      const props = p.properties || {};
+      
+      const name = props['Pandal___C'] || props['Name'] || 'Durga Puja Pandal';
+      const locality = props['Locality__'] || props['Locality'] || '';
+      const category = props['Puja_Categ'] || props['Puja Category'] || '';
+      const themeTitle = props['Theme_Titl'] || props['Theme Title'] || '';
+      const themeDetails = props['Theme_Deta'] || props['Theme Details'] || '';
       return { name, category, themeTitle, themeDetails, locality };
     }
 
