@@ -70,7 +70,7 @@
       background: #FFFFFF;
       border: 1.5px solid var(--royal-gold);
       border-radius: 6px;
-      max-height: 220px;
+      max-height: 240px;
       overflow-y: auto;
       margin-top: 3px;
       box-shadow: 0 6px 16px rgba(0,0,0,0.22);
@@ -122,7 +122,7 @@
 
     /* Map Window */
     #aoiPickerContainer {
-      height: 220px;
+      height: 210px;
       width: 100%;
       border: 1.5px solid var(--royal-gold);
       border-radius: 6px;
@@ -139,18 +139,9 @@
     }
 
     @keyframes bufferPulse {
-      0% {
-        stroke-dashoffset: 0;
-        fill-opacity: 0.12;
-      }
-      50% {
-        stroke-dashoffset: -24;
-        fill-opacity: 0.24;
-      }
-      100% {
-        stroke-dashoffset: -48;
-        fill-opacity: 0.12;
-      }
+      0% { stroke-dashoffset: 0; fill-opacity: 0.12; }
+      50% { stroke-dashoffset: -24; fill-opacity: 0.24; }
+      100% { stroke-dashoffset: -48; fill-opacity: 0.12; }
     }
 
     .status-msg {
@@ -194,9 +185,14 @@
     .pill-count { font-size: 14px; font-weight: 900; color: var(--durga-red); }
     .buffer-pill.selected .pill-count { color: #7B0000; }
 
-    /* Pandal Checklist */
+    /* Pandal Checklist Section */
+    #listSection {
+      display: none; /* Hidden until origin is selected and pandals exist */
+      margin-top: 4px;
+    }
+
     .pandal-list-box {
-      max-height: 175px;
+      max-height: 220px;
       overflow-y: auto;
       border: 1px solid #ECECEC;
       border-radius: 6px;
@@ -207,8 +203,8 @@
 
     .pandal-row {
       display: flex;
-      align-items: center;
-      padding: 6px 5px;
+      align-items: flex-start;
+      padding: 8px 6px;
       border-bottom: 1px solid #F0F0F0;
       font-size: 12px;
       gap: 8px;
@@ -219,6 +215,47 @@
       height: 17px;
       accent-color: var(--durga-red);
       cursor: pointer;
+      margin-top: 2px;
+    }
+
+    /* Structured Field Badges */
+    .field-tag-category {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      color: #8B0000;
+      background: #FFE8E8;
+      border: 1px solid #F5B7B7;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-right: 4px;
+    }
+
+    .field-tag-locality {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      color: #555;
+      background: #F0F0F0;
+      border: 1px solid #D5D5D5;
+      padding: 1px 5px;
+      border-radius: 3px;
+    }
+
+    .field-theme-title {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      color: #996515;
+    }
+
+    .field-theme-details {
+      display: block;
+      margin-top: 2px;
+      font-size: 10.5px;
+      color: #555;
+      line-height: 1.3;
     }
 
     .nav-btn {
@@ -244,7 +281,7 @@
     <!-- Search Bar -->
     <div class="search-container">
       <span style="font-size: 14px; margin-right: 4px;">🔍</span>
-      <input type="text" id="searchInput" class="search-input" placeholder="Search pandal or place (e.g. Gariahat, Tala)..." />
+      <input type="text" id="searchInput" class="search-input" placeholder="Search pandal, locality, or theme..." />
       <div id="searchResults" class="search-results"></div>
     </div>
 
@@ -274,14 +311,12 @@
       </div>
     </div>
 
-    <!-- Pandal Checklist -->
+    <!-- Pandal Checklist (Populates dynamically after setting origin) -->
     <div id="listSection">
       <div style="font-size: 11px; font-weight: 700; color: #444; margin: 2px 0;">
         Select Pandals to Hop (<span id="selectedCount">0</span> selected):
       </div>
-      <div class="pandal-list-box" id="pandalChecklist">
-        <div style="font-size:11px; color:#888; padding:12px; text-align:center;">Select origin inside AOI to discover nearby pandals.</div>
-      </div>
+      <div class="pandal-list-box" id="pandalChecklist"></div>
 
       <button class="nav-btn" id="btnRoute" onclick="launchGoogleMapsRoute()" disabled>
         🧭 Hop Selected in Google Maps
@@ -301,7 +336,7 @@
     let pandalMarkersLayer = L.layerGroup();
 
     let allPandals = [];
-    let originCoords = null; // No point initially
+    let originCoords = null;
     let originType = "PIN";
     let currentRadius = 2;
     let filteredPandals = [];
@@ -309,7 +344,7 @@
     let currentAnimatedRadius = 2000;
     let animFrameId = null;
 
-    // 1. Initial view: Zooms straight into Central Kolkata (Esplanade / BBD Bagh)
+    // 1. Initialize Map
     map = L.map('aoiPickerContainer', {
       zoomControl: false,
       attributionControl: false,
@@ -378,7 +413,28 @@
       return false;
     }
 
-    // 2. Fetch AOI & Dynamically Set Maximum Zoom-Out Limit
+    // Comprehensive field extractors matching your exact dataset schema
+    function getPandalField(p, keys) {
+      const props = p.properties || {};
+      for (let k of keys) {
+        if (props[k] !== undefined && props[k] !== null && String(props[k]).trim() !== "") {
+          return String(props[k]).trim();
+        }
+      }
+      return "";
+    }
+
+    function getPandalData(p) {
+      const name = getPandalField(p, ['Pandal___C', 'Pandal_Name', 'Name', 'pandal_name', 'pandal']) || 'Durga Puja Pandal';
+      const category = getPandalField(p, ['Puja Category', 'Puja_Category', 'Puja_Categ', 'Category', 'puja_category', 'Puja_Cat']) || 'Sarbojanin';
+      const themeTitle = getPandalField(p, ['Theme Title', 'Theme_Title', 'Theme_Titl', 'Theme', 'Theme_Name', 'theme_title']) || '';
+      const themeDetails = getPandalField(p, ['Theme Details', 'Theme_Details', 'Theme_Deta', 'Theme_Desc', 'Description', 'theme_details']) || '';
+      const locality = getPandalField(p, ['Locality', 'locality', 'Location', 'Zone', 'Address']) || '';
+
+      return { name, category, themeTitle, themeDetails, locality };
+    }
+
+    // 2. Fetch AOI GeoJSON
     fetch('./aoi.geojson?v=' + Date.now())
       .then(res => res.json())
       .then(data => {
@@ -392,19 +448,14 @@
           }
         }).addTo(map);
 
-        // Pad boundary by 35% to guarantee full AOI + 10km buffer can be seen
         const paddedBounds = aoiLayer.getBounds().pad(0.35);
-
-        // Dynamically compute exact zoom-out floor for this container
         const calculatedMinZoom = map.getBoundsZoom(paddedBounds);
         map.setMinZoom(calculatedMinZoom);
-        map.setMaxBounds(paddedBounds.pad(0.15)); // Prevents wandering off to other states
-
-        // Keep initial central focus without moving camera
+        map.setMaxBounds(paddedBounds.pad(0.15));
         map.setView([22.565, 88.363], 12.5);
       })
       .catch(err => {
-        console.warn("aoi.geojson load failed", err);
+        console.warn("aoi.geojson load fallback", err);
         map.setMinZoom(10);
       });
 
@@ -425,7 +476,7 @@
       el.className = "status-msg" + (isError ? " error" : "");
     }
 
-    // 4. Map Click (AOI Boundary Enforced)
+    // 4. Map Click
     map.on('click', function(e) {
       const lat = e.latlng.lat;
       const lng = e.latlng.lng;
@@ -502,11 +553,11 @@
       document.getElementById('count2').innerText = "-";
       document.getElementById('count5').innerText = "-";
       document.getElementById('count10').innerText = "-";
-      document.getElementById('pandalChecklist').innerHTML = '<div style="font-size:11px; color:#B71C1C; padding:12px; text-align:center;">Location outside AOI. Pick a spot inside Kolkata boundary.</div>';
+      document.getElementById('listSection').style.display = 'none';
       document.getElementById('btnRoute').disabled = true;
     }
 
-    // 5. Origin Setter & Pulsing Buffer Animation
+    // 5. Origin Setter & Dynamic Buffer Animation
     function handleOriginSet(lat, lng, label) {
       originCoords = [lat, lng];
       showStatus("Origin: " + label);
@@ -586,7 +637,6 @@
         }).addTo(map);
       }
 
-      // Smoothly zoom out the camera to frame the full circle with comfortable padding
       const targetBounds = L.latLng(originCoords[0], originCoords[1]).toBounds(targetRadiusMeters * 2);
       map.flyToBounds(targetBounds, {
         padding: [14, 14],
@@ -594,18 +644,15 @@
         easeLinearity: 0.25
       });
 
-      // Filter pandals strictly inside active buffer radius
       filteredPandals = allPandals.map(p => ({
         ...p,
         distance: haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1])
       })).filter(p => p.distance <= km)
         .sort((a, b) => a.distance - b.distance);
 
-      // Render ONLY pandals inside buffer
       pandalMarkersLayer.clearLayers();
       filteredPandals.forEach(p => {
-        const name = p.properties.Pandal___C || p.properties.Name || "Pandal";
-        const cat = p.properties.Puja_Categ || "Standard";
+        const info = getPandalData(p);
 
         const m = L.circleMarker(p.computedCoords, {
           radius: 5,
@@ -614,10 +661,13 @@
           weight: 1.5,
           fillOpacity: 0.95
         }).bindPopup(`
-          <div style="font-size:12px; font-family:sans-serif;">
-            <b style="color:#B71C1C;">${name}</b><br/>
-            <span style="font-size:10px; color:#555;">${cat}</span><br/>
-            <span style="font-size:10px; color:#888;">${p.distance.toFixed(2)} km away</span>
+          <div style="font-size:12px; font-family:sans-serif; min-width:180px;">
+            <b style="color:#B71C1C; font-size:13px;">${info.name}</b><br/>
+            ${info.locality ? `<span style="color:#666; font-size:11px;">📍 ${info.locality}</span><br/>` : ''}
+            <span style="display:inline-block; margin-top:2px; font-size:10px; background:#FFE8E8; color:#8B0000; padding:1px 4px; border-radius:3px;">${info.category}</span><br/>
+            ${info.themeTitle ? `<div style="margin-top:4px; font-size:11px; color:#996515;"><b>Theme:</b> ${info.themeTitle}</div>` : ''}
+            ${info.themeDetails ? `<div style="font-size:10.5px; color:#555; margin-top:2px;">${info.themeDetails}</div>` : ''}
+            <div style="font-size:10px; color:#888; margin-top:4px;"><b>${p.distance.toFixed(2)} km away</b></div>
           </div>
         `);
         pandalMarkersLayer.addLayer(m);
@@ -626,27 +676,38 @@
       renderChecklist();
     }
 
+    // 6. Checklist Renderer: Displaying Category, Locality, Theme Title, and Theme Details
     function renderChecklist() {
+      const section = document.getElementById('listSection');
       const box = document.getElementById('pandalChecklist');
       box.innerHTML = '';
       selectedPandals.clear();
       updateRouteButton();
 
       if (!filteredPandals.length) {
-        box.innerHTML = '<div style="font-size:11px; color:#888; padding:10px; text-align:center;">No pandals in this radius. Try 5 or 10 KM.</div>';
+        section.style.display = 'block';
+        box.innerHTML = '<div style="font-size:11px; color:#888; padding:10px; text-align:center;">No pandals found in this radius. Try 5 or 10 KM.</div>';
         return;
       }
 
+      section.style.display = 'block';
+
       filteredPandals.forEach((p, idx) => {
-        const name = p.properties.Pandal___C || p.properties.Name || "Durga Puja Pandal";
-        const cat = p.properties.Puja_Categ || "Standard";
+        const info = getPandalData(p);
+
         const row = document.createElement('div');
         row.className = 'pandal-row';
         row.innerHTML = `
           <input type="checkbox" id="chk_${idx}" onchange="togglePandal(${idx})">
           <label for="chk_${idx}" style="cursor:pointer; flex:1;">
-            <b>${name}</b> <span style="font-size:10px; color:#777;">(${cat})</span><br/>
-            <span style="font-size:10px; color:#B71C1C; font-weight:700;">${p.distance.toFixed(2)} km away</span>
+            <b>${info.name}</b>
+            <div style="margin: 2px 0;">
+              ${info.category ? `<span class="field-tag-category">${info.category}</span>` : ''}
+              ${info.locality ? `<span class="field-tag-locality">📍 ${info.locality}</span>` : ''}
+            </div>
+            ${info.themeTitle ? `<span class="field-theme-title">🎭 ${info.themeTitle}</span>` : ''}
+            ${info.themeDetails ? `<span class="field-theme-details">${info.themeDetails}</span>` : ''}
+            <div style="font-size:10px; color:#B71C1C; font-weight:700; margin-top:3px;">${p.distance.toFixed(2)} km away</div>
           </label>
         `;
         box.appendChild(row);
@@ -684,7 +745,7 @@
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
     }
 
-    // 6. Search Input (Pandals & Places with AOI Check)
+    // 7. Search Input (Searches across Name, Locality, Category, and Themes)
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     let searchDebounce = null;
@@ -703,9 +764,12 @@
       const qLower = query.toLowerCase();
 
       const matchedPandals = allPandals.filter(p => {
-        const name = (p.properties.Pandal___C || p.properties.Name || "").toLowerCase();
-        const address = (p.properties.Address || "").toLowerCase();
-        return name.includes(qLower) || address.includes(qLower);
+        const info = getPandalData(p);
+        return info.name.toLowerCase().includes(qLower) ||
+               info.locality.toLowerCase().includes(qLower) ||
+               info.category.toLowerCase().includes(qLower) ||
+               info.themeTitle.toLowerCase().includes(qLower) ||
+               info.themeDetails.toLowerCase().includes(qLower);
       }).slice(0, 5);
 
       let matchedPlaces = [];
@@ -738,12 +802,14 @@
         html += '<div class="search-segment-title">🪔 Durga Puja Pandals</div>';
         pandals.forEach(p => {
           const idx = allPandals.indexOf(p);
-          const name = p.properties.Pandal___C || p.properties.Name;
-          const cat = p.properties.Puja_Categ || "Standard";
+          const info = getPandalData(p);
           html += `
             <div class="search-item" onclick="selectPandalResult(${idx})">
-              <b>${name}</b>
-              <span class="search-item-sub">Category: ${cat}</span>
+              <b>${info.name}</b>
+              <span class="search-item-sub">
+                ${info.locality ? `📍 ${info.locality} • ` : ''}${info.category}
+                ${info.themeTitle ? ` • 🎭 ${info.themeTitle}` : ''}
+              </span>
             </div>
           `;
         });
@@ -767,12 +833,13 @@
 
     function selectPandalResult(idx) {
       const p = allPandals[idx];
+      const info = getPandalData(p);
       searchResults.style.display = 'none';
-      searchInput.value = p.properties.Pandal___C || p.properties.Name;
+      searchInput.value = info.name;
       originType = "PIN";
       document.getElementById('btnPin').classList.add('active');
       document.getElementById('btnGPS').classList.remove('active');
-      handleOriginSet(p.computedCoords[0], p.computedCoords[1], p.properties.Pandal___C || "Selected Pandal");
+      handleOriginSet(p.computedCoords[0], p.computedCoords[1], info.name);
     }
 
     function selectPlaceResult(lat, lng, name) {
