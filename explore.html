@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Explore Pandals</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     :root {
       --durga-red: #B71C1C;
@@ -15,8 +17,7 @@
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       margin: 0; padding: 10px;
-      background: var(--bg-cream);
-      color: #212121;
+      background: var(--bg-cream); color: #212121;
     }
     .card {
       background: #FFFFFF;
@@ -26,12 +27,8 @@
       box-shadow: 0 4px 12px rgba(183, 28, 28, 0.08);
     }
     .header-title {
-      font-size: 15px;
-      font-weight: 800;
-      color: var(--durga-red);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
+      font-size: 15px; font-weight: 800; color: var(--durga-red);
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;
     }
     .btn-row { display: flex; gap: 6px; margin-bottom: 8px; }
     .action-btn {
@@ -39,63 +36,40 @@
       border: 1.5px solid var(--durga-red);
       background: #fff; color: var(--durga-red);
       font-weight: 700; font-size: 12px;
-      border-radius: 6px; cursor: pointer;
-      transition: all 0.2s;
+      border-radius: 6px; cursor: pointer; transition: all 0.2s;
     }
-    .action-btn.active, .action-btn:hover {
-      background: var(--durga-red);
-      color: #fff;
+    .action-btn.active, .action-btn:hover { background: var(--durga-red); color: #fff; }
+    #pickerMap {
+      height: 180px; width: 100%; border-radius: 6px;
+      border: 1.5px solid var(--royal-gold); margin: 8px 0; display: none;
     }
     .buffer-pill-group { display: flex; gap: 6px; margin: 8px 0; }
     .buffer-pill {
-      flex: 1; min-height: 46px;
-      background: #fdf8eb;
-      border: 1.5px solid var(--royal-gold);
-      border-radius: 6px;
-      padding: 4px; text-align: center;
-      cursor: pointer;
+      flex: 1; min-height: 46px; background: #fdf8eb;
+      border: 1.5px solid var(--royal-gold); border-radius: 6px;
+      padding: 4px; text-align: center; cursor: pointer;
       display: flex; flex-direction: column; justify-content: center;
     }
-    .buffer-pill.selected {
-      background: var(--royal-gold);
-      color: #7B0000;
-      font-weight: bold;
-    }
+    .buffer-pill.selected { background: var(--royal-gold); color: #7B0000; font-weight: bold; }
     .pill-km { font-size: 11px; font-weight: bold; }
     .pill-count { font-size: 14px; font-weight: 800; color: var(--durga-red); }
     .buffer-pill.selected .pill-count { color: #7B0000; }
     .pandal-list-box {
-      max-height: 230px;
-      overflow-y: auto;
-      margin-top: 8px;
-      border: 1px solid #eee;
-      border-radius: 6px;
-      padding: 4px;
-      background: #fff;
+      max-height: 220px; overflow-y: auto; margin-top: 8px;
+      border: 1px solid #eee; border-radius: 6px; padding: 4px; background: #fff;
     }
     .pandal-row {
-      display: flex; align-items: center;
-      padding: 7px 6px;
-      border-bottom: 1px solid #f0f0f0;
-      font-size: 12px; gap: 8px;
+      display: flex; align-items: center; padding: 7px 6px;
+      border-bottom: 1px solid #f0f0f0; font-size: 12px; gap: 8px;
     }
     .pandal-row:hover { background: #fdf5e6; }
-    .pandal-row input {
-      width: 18px; height: 18px;
-      accent-color: var(--durga-red);
-      cursor: pointer;
-    }
+    .pandal-row input { width: 18px; height: 18px; accent-color: var(--durga-red); cursor: pointer; }
     .nav-btn {
-      width: 100%; min-height: 42px;
-      margin-top: 10px;
-      background: var(--gold-gradient);
-      color: #7B0000;
-      border: 1.5px solid #8B0000;
-      border-radius: 6px;
-      font-weight: 800; font-size: 12px;
-      text-transform: uppercase;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      width: 100%; min-height: 42px; margin-top: 10px;
+      background: var(--gold-gradient); color: #7B0000;
+      border: 1.5px solid #8B0000; border-radius: 6px;
+      font-weight: 800; font-size: 12px; text-transform: uppercase;
+      cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,0.15);
     }
     .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
   </style>
@@ -107,9 +81,12 @@
 
     <div class="btn-row">
       <button class="action-btn" id="btnGPS" onclick="setOriginGPS()">📍 My Location</button>
-      <button class="action-btn" id="btnPin" onclick="enablePinDrop()">📌 Map Pin</button>
+      <button class="action-btn" id="btnPin" onclick="togglePinPicker()">📌 Tap Pin on Map</button>
     </div>
     <div id="statusText" style="font-size: 11px; color: #666; margin-bottom: 6px;">Select origin to start buffer search.</div>
+
+    <!-- Interactive Pin Drop Container -->
+    <div id="pickerMap"></div>
 
     <div class="buffer-pill-group" id="bufferGroup" style="display:none;">
       <div class="buffer-pill selected" id="pill2" onclick="selectRadius(2)">
@@ -145,6 +122,8 @@
     let currentRadius = 2;
     let filteredPandals = [];
     let selectedPandals = new Set();
+    let miniMap = null;
+    let originMarker = null;
 
     function haversine(c1, c2) {
       const R = 6371;
@@ -162,36 +141,68 @@
       originType = "GPS";
       document.getElementById("btnGPS").classList.add("active");
       document.getElementById("btnPin").classList.remove("active");
-      document.getElementById("statusText").innerText = "Detecting GPS...";
+      document.getElementById("pickerMap").style.display = "none";
+      document.getElementById("statusText").innerText = "Detecting GPS location...";
+
+      if (!navigator.geolocation) {
+        document.getElementById("statusText").innerText = "Geolocation not supported.";
+        return;
+      }
 
       navigator.geolocation.getCurrentPosition(
-        pos => {
-          originCoords = [pos.coords.longitude, pos.coords.latitude];
-          document.getElementById("statusText").innerText = "Origin: Your Live Location";
-          calculateBuffers();
+        onGPSSuccess,
+        function(err) {
+          navigator.geolocation.getCurrentPosition(
+            onGPSSuccess,
+            function(err2) {
+              document.getElementById("statusText").innerText = "GPS unavailable. Please tap 'Tap Pin on Map'.";
+            },
+            { enableHighAccuracy: false, timeout: 12000 }
+          );
         },
-        err => {
-          document.getElementById("statusText").innerText = "GPS unavailable. Pick a point on map.";
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
+        { enableHighAccuracy: true, timeout: 6000 }
       );
     }
 
-    function enablePinDrop() {
+    function onGPSSuccess(pos) {
+      originCoords = [pos.coords.longitude, pos.coords.latitude];
+      document.getElementById("statusText").innerText = "Origin: Your Live Location";
+      calculateBuffers();
+    }
+
+    function togglePinPicker() {
       originType = "PIN";
       document.getElementById("btnPin").classList.add("active");
       document.getElementById("btnGPS").classList.remove("active");
-      document.getElementById("statusText").innerText = "Click street on map.";
-      window.parent.postMessage({ action: "ENABLE_MAP_CLICK" }, "*");
-    }
+      const mapDiv = document.getElementById("pickerMap");
+      mapDiv.style.display = "block";
+      document.getElementById("statusText").innerText = "Tap any road or crossing on the map below:";
 
-    window.addEventListener("message", function(event) {
-      if (event.data && event.data.action === "PIN_PLACED") {
-        originCoords = [event.data.lng, event.data.lat];
-        document.getElementById("statusText").innerText = "Origin: Pin (" + originCoords[1].toFixed(3) + ", " + originCoords[0].toFixed(3) + ")";
-        calculateBuffers();
+      if (!miniMap) {
+        miniMap = L.map('pickerMap').setView([22.565, 88.363], 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 18,
+          attribution: '© OpenStreetMap'
+        }).addTo(miniMap);
+
+        miniMap.on('click', function(e) {
+          const lat = e.latlng.lat;
+          const lng = e.latlng.lng;
+          originCoords = [lng, lat];
+
+          if (originMarker) {
+            originMarker.setLatLng(e.latlng);
+          } else {
+            originMarker = L.marker(e.latlng).addTo(miniMap);
+          }
+
+          document.getElementById("statusText").innerText = "Origin: Pinned at (" + lat.toFixed(4) + ", " + lng.toFixed(4) + ")";
+          calculateBuffers();
+        });
+      } else {
+        miniMap.invalidateSize();
       }
-    });
+    }
 
     function calculateBuffers() {
       if (!originCoords || !allPandals.length) return;
@@ -230,7 +241,7 @@
       updateRouteButton();
 
       if (!filteredPandals.length) {
-        box.innerHTML = '<div style="font-size:12px; color:#888; padding:8px; text-align:center;">No pandals in this radius.</div>';
+        box.innerHTML = '<div style="font-size:12px; color:#888; padding:8px; text-align:center;">No pandals found in this radius.</div>';
         return;
       }
 
