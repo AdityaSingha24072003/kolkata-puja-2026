@@ -40,6 +40,7 @@
       flex-direction: column;
     }
 
+    /* Search Box */
     .search-container {
       position: relative;
       background: #FFFFFF;
@@ -99,6 +100,7 @@
     .search-item:hover { background: #FFF3D6; }
     .search-item-sub { font-size: 10px; color: #666; margin-top: 1px; }
 
+    /* Action Buttons */
     .btn-row { display: flex; gap: 6px; margin-bottom: 4px; }
 
     .action-btn {
@@ -118,8 +120,9 @@
     }
     .action-btn.active { background: var(--durga-red); color: #FFFFFF; }
 
+    /* Map Window */
     #aoiPickerContainer {
-      height: 195px;
+      height: 205px;
       width: 100%;
       border: 1.5px solid var(--royal-gold);
       border-radius: 6px;
@@ -127,6 +130,27 @@
       overflow: hidden;
       position: relative;
       background: #f8f8f8;
+    }
+
+    /* Pulsating Buffer Animation */
+    .animated-buffer-circle {
+      stroke-dasharray: 6, 6;
+      animation: bufferPulse 2.8s linear infinite;
+    }
+
+    @keyframes bufferPulse {
+      0% {
+        stroke-dashoffset: 0;
+        fill-opacity: 0.12;
+      }
+      50% {
+        stroke-dashoffset: -24;
+        fill-opacity: 0.24;
+      }
+      100% {
+        stroke-dashoffset: -48;
+        fill-opacity: 0.12;
+      }
     }
 
     .status-msg {
@@ -140,6 +164,7 @@
       font-weight: bold;
     }
 
+    /* Buffer Pills */
     .buffer-pill-group {
       display: flex;
       gap: 6px;
@@ -157,7 +182,9 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
+      transition: transform 0.15s ease;
     }
+    .buffer-pill:active { transform: scale(0.97); }
     .buffer-pill.selected {
       background: var(--royal-gold);
       color: #7B0000;
@@ -167,8 +194,9 @@
     .pill-count { font-size: 14px; font-weight: 900; color: var(--durga-red); }
     .buffer-pill.selected .pill-count { color: #7B0000; }
 
+    /* Pandal Checklist */
     .pandal-list-box {
-      max-height: 180px;
+      max-height: 175px;
       overflow-y: auto;
       border: 1px solid #ECECEC;
       border-radius: 6px;
@@ -213,24 +241,24 @@
 <body>
 
   <div class="main-container">
-    <!-- Top Search Input -->
+    <!-- Search Bar -->
     <div class="search-container">
       <span style="font-size: 14px; margin-right: 4px;">🔍</span>
       <input type="text" id="searchInput" class="search-input" placeholder="Search pandal or place (e.g. Gariahat, Tala)..." />
       <div id="searchResults" class="search-results"></div>
     </div>
 
-    <!-- Origin Action Buttons -->
+    <!-- Origin Buttons -->
     <div class="btn-row">
       <button class="action-btn" id="btnGPS" onclick="setOriginGPS()">📍 My Location</button>
       <button class="action-btn active" id="btnPin" onclick="activatePinDrop()">📌 Tap in AOI</button>
     </div>
     <div id="statusText" class="status-msg">Tap inside the Kolkata AOI boundary to set origin:</div>
 
-    <!-- Map Window (Only contains AOI boundary) -->
+    <!-- Map Window -->
     <div id="aoiPickerContainer"></div>
 
-    <!-- Buffer Radius Controls -->
+    <!-- Buffer Pills -->
     <div class="buffer-pill-group" id="bufferGroup">
       <div class="buffer-pill selected" id="pill2" onclick="selectRadius(2)">
         <div class="pill-km">2 KM RADIUS</div>
@@ -246,7 +274,7 @@
       </div>
     </div>
 
-    <!-- Hopping Checklist Section -->
+    <!-- Pandal Checklist -->
     <div id="listSection">
       <div style="font-size: 11px; font-weight: 700; color: #444; margin: 2px 0;">
         Select Pandals to Hop (<span id="selectedCount">0</span> selected):
@@ -273,16 +301,20 @@
     let pandalMarkersLayer = L.layerGroup();
 
     let allPandals = [];
-    let originCoords = null; // Initially null (no pin until user sets inside AOI)
+    let originCoords = null;
     let originType = "PIN";
     let currentRadius = 2;
     let filteredPandals = [];
     let selectedPandals = new Set();
+    let currentAnimatedRadius = 2000;
+    let animFrameId = null;
 
-    // 1. Initialize Map restricted strictly to AOI
+    // 1. Initialize Map with unlocked minimum zoom so it can zoom out fully
     map = L.map('aoiPickerContainer', {
       zoomControl: false,
-      attributionControl: false
+      attributionControl: false,
+      minZoom: 10,
+      maxZoom: 18
     }).setView([22.565, 88.363], 12);
 
     L.tileLayer(TILE_URL, { maxZoom: 18 }).addTo(map);
@@ -315,9 +347,8 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // Point-in-polygon verification against AOI
     function isPointInPoly(pt, polyCoords) {
-      let x = pt[1], y = pt[0]; // pt is [lat, lng] -> [y, x]
+      let x = pt[1], y = pt[0];
       let inside = false;
       for (let i = 0, j = polyCoords.length - 1; i < polyCoords.length; j = i++) {
         let xi = polyCoords[i][0], yi = polyCoords[i][1];
@@ -329,7 +360,7 @@
     }
 
     function isInsideAOI(lat, lng) {
-      if (!aoiGeoJSONData) return true; // Fallback if AOI still fetching
+      if (!aoiGeoJSONData) return true;
       const pt = [lat, lng];
 
       for (let feature of (aoiGeoJSONData.features || [aoiGeoJSONData])) {
@@ -346,33 +377,27 @@
       return false;
     }
 
-    // 2. Load and Lock Map to AOI GeoJSON
+    // 2. Fetch AOI GeoJSON (Renders boundary, allows broad camera zoom)
     fetch('./aoi.geojson?v=' + Date.now())
-      .then(res => {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         aoiGeoJSONData = data;
         aoiLayer = L.geoJSON(data, {
           style: {
             color: "#B71C1C",
-            weight: 2.5,
+            weight: 2,
             fillColor: "#D4AF37",
-            fillOpacity: 0.12
+            fillOpacity: 0.10
           }
         }).addTo(map);
 
-        const bounds = aoiLayer.getBounds();
-        map.fitBounds(bounds, { padding: [6, 6] });
-        map.setMaxBounds(bounds.pad(0.08));
-        map.setMinZoom(map.getZoom() - 1);
+        map.fitBounds(aoiLayer.getBounds(), { padding: [10, 10] });
       })
       .catch(err => {
-        console.warn("aoi.geojson load failed, using fallback bounds", err);
+        console.warn("aoi.geojson fallback", err);
       });
 
-    // 3. Fetch Pandals Data (Parsed silently, no points shown initially)
+    // 3. Fetch Pandals
     fetch('./pandals_clean.geojson?v=' + Date.now())
       .then(res => res.json())
       .then(data => {
@@ -389,13 +414,13 @@
       el.className = "status-msg" + (isError ? " error" : "");
     }
 
-    // 4. Map Click (Enforces AOI Boundary)
+    // 4. Map Click
     map.on('click', function(e) {
       const lat = e.latlng.lat;
       const lng = e.latlng.lng;
 
       if (!isInsideAOI(lat, lng)) {
-        showStatus("⚠️ Click is outside Kolkata AOI boundary. Pick inside the boundary.", true);
+        showStatus("⚠️ Click is outside Kolkata AOI boundary. Pick inside boundary.", true);
         return;
       }
 
@@ -412,7 +437,6 @@
       showStatus("Tap inside the Kolkata AOI boundary to set origin:");
     }
 
-    // 5. Live GPS (Validates Location Against AOI)
     function setOriginGPS() {
       originType = "GPS";
       document.getElementById('btnGPS').classList.add('active');
@@ -420,7 +444,7 @@
       showStatus("Detecting GPS position...");
 
       if (!navigator.geolocation) {
-        showStatus("Geolocation not supported. Please tap inside the AOI.", true);
+        showStatus("Geolocation not supported. Please tap inside AOI.", true);
         return;
       }
 
@@ -429,7 +453,6 @@
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
 
-          // Check if user is physically located inside Kolkata AOI
           if (!isInsideAOI(lat, lng)) {
             resetToUnselected();
             showStatus("⚠️ Your current location is outside the Kolkata Puja AOI. Working not possible with this location.", true);
@@ -472,7 +495,7 @@
       document.getElementById('btnRoute').disabled = true;
     }
 
-    // 6. Universal Origin Setter & Buffer Engine
+    // 5. Origin Setter with Fluid Camera Zoom Out
     function handleOriginSet(lat, lng, label) {
       originCoords = [lat, lng];
       showStatus("Origin: " + label);
@@ -506,6 +529,28 @@
       selectRadius(currentRadius);
     }
 
+    // Animated smooth radius expansion
+    function animateRadiusTo(targetRadiusMeters) {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      const startRadius = currentAnimatedRadius || targetRadiusMeters;
+      const startTime = performance.now();
+      const duration = 300;
+
+      function step(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const r = startRadius + (targetRadiusMeters - startRadius) * ease;
+        currentAnimatedRadius = r;
+        if (bufferCircle) bufferCircle.setRadius(r);
+
+        if (progress < 1) {
+          animFrameId = requestAnimationFrame(step);
+        }
+      }
+      animFrameId = requestAnimationFrame(step);
+    }
+
     function selectRadius(km) {
       currentRadius = km;
       [2, 5, 10].forEach(k => {
@@ -514,22 +559,30 @@
 
       if (!originCoords) return;
 
-      // Draw Buffer Circle inside AOI window
+      const targetRadiusMeters = km * 1000;
+
       if (bufferCircle) {
         bufferCircle.setLatLng(originCoords);
-        bufferCircle.setRadius(km * 1000);
+        animateRadiusTo(targetRadiusMeters);
       } else {
+        currentAnimatedRadius = targetRadiusMeters;
         bufferCircle = L.circle(originCoords, {
-          radius: km * 1000,
+          radius: targetRadiusMeters,
           color: '#B71C1C',
           fillColor: '#D4AF37',
           fillOpacity: 0.16,
           weight: 2,
-          dashArray: '4, 4'
+          className: 'animated-buffer-circle'
         }).addTo(map);
       }
 
-      map.fitBounds(bufferCircle.getBounds(), { padding: [12, 12] });
+      // Smoothly zoom out the camera to frame the full circle with comfortable padding
+      const targetBounds = L.latLng(originCoords[0], originCoords[1]).toBounds(targetRadiusMeters * 2);
+      map.flyToBounds(targetBounds, {
+        padding: [16, 16],
+        duration: 0.65,
+        easeLinearity: 0.25
+      });
 
       // Filter pandals strictly inside active buffer radius
       filteredPandals = allPandals.map(p => ({
@@ -621,7 +674,7 @@
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
     }
 
-    // 7. Search Input (Pandals & Places with AOI Check)
+    // 6. Search Input
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     let searchDebounce = null;
@@ -639,14 +692,12 @@
     async function executeSearch(query) {
       const qLower = query.toLowerCase();
 
-      // Pandals
       const matchedPandals = allPandals.filter(p => {
         const name = (p.properties.Pandal___C || p.properties.Name || "").toLowerCase();
         const address = (p.properties.Address || "").toLowerCase();
         return name.includes(qLower) || address.includes(qLower);
       }).slice(0, 5);
 
-      // Places via Photon
       let matchedPlaces = [];
       try {
         const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query + ' Kolkata')}&lat=22.565&lon=88.363&limit=5`);
@@ -719,7 +770,7 @@
       searchInput.value = name;
 
       if (!isInsideAOI(lat, lng)) {
-        showStatus("⚠️ '" + name + "' is outside the Kolkata Puja AOI boundary.", true);
+        showStatus("⚠️ '" + name + "' is outside Kolkata AOI boundary.", true);
         return;
       }
 
