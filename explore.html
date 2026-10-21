@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Kolkata Durga Puja 2026 - Explorer</title>
+  <title>Kolkata Durga Puja 2026 - Pandal Explorer</title>
 
   <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -21,174 +21,160 @@
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
     html, body {
-      margin: 0; padding: 0;
+      margin: 0; padding: 10px;
       width: 100%; height: 100%;
-      overflow: hidden;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
       background: var(--bg-cream);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark-text);
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      overflow-x: hidden;
     }
 
-    #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
-
-    .app-header {
-      position: absolute; top: 12px; left: 12px; right: 12px;
-      max-width: 440px; z-index: 1000;
+    .main-card {
+      width: 100%;
+      max-width: 440px;
+      background: #FFFFFF;
+      border: 2px solid var(--royal-gold);
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 16px rgba(183, 28, 28, 0.12);
+      position: relative;
     }
 
+    /* Search Container */
     .search-container {
       position: relative;
       background: #FFFFFF;
-      border: 2px solid var(--royal-gold);
+      border: 1.5px solid var(--royal-gold);
       border-radius: 8px;
-      box-shadow: 0 4px 14px rgba(183, 28, 28, 0.15);
-      display: flex; align-items: center; padding: 3px 10px;
+      display: flex;
+      align-items: center;
+      padding: 4px 8px;
+      margin-bottom: 10px;
     }
 
     .search-input {
       width: 100%; border: none; outline: none;
-      font-size: 13px; padding: 7px;
-      color: var(--dark-text); background: transparent;
+      font-size: 13px; padding: 6px;
+      background: transparent; color: var(--dark-text);
     }
 
     .search-results {
       position: absolute; top: 100%; left: 0; right: 0;
       background: #FFFFFF; border: 1.5px solid var(--royal-gold);
-      border-radius: 8px; max-height: 280px; overflow-y: auto;
-      margin-top: 5px; box-shadow: 0 6px 18px rgba(0,0,0,0.22);
-      display: none; z-index: 1001;
+      border-radius: 8px; max-height: 250px; overflow-y: auto;
+      margin-top: 4px; box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+      display: none; z-index: 2000;
     }
 
     .search-segment-title {
       background: #FFF8E7; color: var(--durga-red);
       font-size: 11px; font-weight: 800; text-transform: uppercase;
-      letter-spacing: 0.5px; padding: 6px 10px; border-bottom: 1px solid #F1E2BE;
+      letter-spacing: 0.5px; padding: 6px 8px; border-bottom: 1px solid #F1E2BE;
     }
 
     .search-item {
-      padding: 8px 10px; font-size: 12px; border-bottom: 1px solid #f5f5f5;
+      padding: 8px; font-size: 12px; border-bottom: 1px solid #F5F5F5;
       cursor: pointer; display: flex; flex-direction: column;
     }
     .search-item:hover { background: #FFF3D6; }
     .search-item-sub { font-size: 10px; color: #666; margin-top: 2px; }
 
-    .drawer-card {
-      position: absolute; bottom: 16px; left: 12px; right: 12px;
-      max-width: 420px; background: #FFFFFF;
-      border: 2px solid var(--royal-gold); border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.22); padding: 12px;
-      z-index: 1000;
-    }
-
-    @media (min-width: 768px) {
-      .drawer-card { top: 76px; bottom: auto; left: 12px; right: auto; }
-    }
-
-    .drawer-title {
-      font-size: 14px; font-weight: 800; color: var(--durga-red);
-      text-transform: uppercase; letter-spacing: 0.5px;
-      display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
-    }
-
+    /* Action Buttons */
     .btn-row { display: flex; gap: 8px; margin-bottom: 6px; }
 
     .action-btn {
       flex: 1; min-height: 38px; border: 1.5px solid var(--durga-red);
       background: #FFFFFF; color: var(--durga-red); font-weight: 700;
-      font-size: 11px; border-radius: 6px; cursor: pointer;
+      font-size: 12px; border-radius: 6px; cursor: pointer;
       display: flex; align-items: center; justify-content: center; transition: all 0.2s;
     }
     .action-btn.active { background: var(--durga-red); color: #FFFFFF; }
 
+    /* The Dedicated Interactive Map Window */
     #aoiPickerContainer {
-      display: none; height: 180px; width: 100%;
-      border: 1.5px solid var(--royal-gold); border-radius: 6px;
+      height: 200px; width: 100%;
+      border: 1.5px solid var(--royal-gold); border-radius: 8px;
       margin: 8px 0; overflow: hidden; position: relative;
     }
 
-    .buffer-pill-group { display: none; gap: 6px; margin: 8px 0; }
+    /* Buffer Pills */
+    .buffer-pill-group { display: flex; gap: 6px; margin: 8px 0; }
 
     .buffer-pill {
-      flex: 1; min-height: 44px; background: #FFF9E6;
+      flex: 1; min-height: 46px; background: #FFF9E6;
       border: 1.5px solid var(--royal-gold); border-radius: 6px;
       text-align: center; cursor: pointer;
       display: flex; flex-direction: column; justify-content: center;
     }
     .buffer-pill.selected { background: var(--royal-gold); color: #7B0000; font-weight: bold; }
     .pill-km { font-size: 10px; font-weight: 700; text-transform: uppercase; }
-    .pill-count { font-size: 14px; font-weight: 900; color: var(--durga-red); }
+    .pill-count { font-size: 15px; font-weight: 900; color: var(--durga-red); }
     .buffer-pill.selected .pill-count { color: #7B0000; }
 
+    /* Pandal Checklist */
     .pandal-list-box {
-      max-height: 180px; overflow-y: auto; border: 1px solid #ECECEC;
-      border-radius: 6px; padding: 4px; background: #FFFDF9; margin-top: 8px;
+      max-height: 190px; overflow-y: auto; border: 1px solid #ECECEC;
+      border-radius: 6px; padding: 4px; background: #FFFDF9; margin-top: 6px;
     }
 
     .pandal-row {
-      display: flex; align-items: center; padding: 7px 5px;
+      display: flex; align-items: center; padding: 8px 6px;
       border-bottom: 1px solid #F0F0F0; font-size: 12px; gap: 8px;
     }
     .pandal-row:hover { background: #FFF4D9; }
-    .pandal-row input { width: 17px; height: 17px; accent-color: var(--durga-red); }
+    .pandal-row input { width: 18px; height: 18px; accent-color: var(--durga-red); cursor: pointer; }
 
     .nav-btn {
-      width: 100%; min-height: 40px; margin-top: 8px;
+      width: 100%; min-height: 42px; margin-top: 10px;
       background: var(--gold-gradient); color: #7B0000;
       border: 1.5px solid #8B0000; border-radius: 6px;
-      font-weight: 800; font-size: 11px; text-transform: uppercase;
+      font-weight: 800; font-size: 12px; text-transform: uppercase;
       cursor: pointer; box-shadow: 0 3px 6px rgba(0,0,0,0.15);
     }
     .nav-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    .popup-route-btn {
-      display: block; margin-top: 6px; background: var(--gold-gradient);
-      color: #7B0000; border: 1.5px solid #8B0000; text-align: center;
-      padding: 7px 10px; border-radius: 6px; text-decoration: none;
-      font-weight: bold; font-size: 11px; text-transform: uppercase;
-    }
   </style>
 </head>
 <body>
 
-  <div id="map"></div>
-
-  <div class="app-header">
+  <div class="main-card">
+    <!-- Top Search Input -->
     <div class="search-container">
       <span style="font-size: 15px; margin-right: 4px;">🔍</span>
-      <input type="text" id="searchInput" class="search-input" placeholder="Search pandal or place (e.g. Gariahat, Bagbazar)..." />
+      <input type="text" id="searchInput" class="search-input" placeholder="Search pandal or place (e.g. Gariahat, Tala)..." />
       <div id="searchResults" class="search-results"></div>
     </div>
-  </div>
 
-  <div class="drawer-card">
-    <div class="drawer-title">
-      <span>🪔 Explore Pandals</span>
-      <span id="loader" style="font-size: 11px; color: #888;">Loading...</span>
-    </div>
-
+    <!-- Origin Action Buttons -->
     <div class="btn-row">
       <button class="action-btn" id="btnGPS" onclick="setOriginGPS()">📍 My Location</button>
-      <button class="action-btn" id="btnPin" onclick="toggleAOIPicker()">📌 Tap in AOI</button>
+      <button class="action-btn active" id="btnPin" onclick="activatePinDrop()">📌 Tap in AOI</button>
     </div>
-    <div id="statusText" style="font-size: 11px; color: #666; margin-bottom: 4px;">Select origin or search a place above.</div>
+    <div id="statusText" style="font-size: 11px; color: #666; margin-bottom: 4px;">Tap anywhere in the map to move origin:</div>
 
+    <!-- The Dedicated Map Window -->
     <div id="aoiPickerContainer"></div>
 
+    <!-- Buffer Radius Controls -->
     <div class="buffer-pill-group" id="bufferGroup">
       <div class="buffer-pill selected" id="pill2" onclick="selectRadius(2)">
-        <div class="pill-km">2 KM Radius</div>
+        <div class="pill-km">2 KM RADIUS</div>
         <div class="pill-count" id="count2">-</div>
       </div>
       <div class="buffer-pill" id="pill5" onclick="selectRadius(5)">
-        <div class="pill-km">5 KM Radius</div>
+        <div class="pill-km">5 KM RADIUS</div>
         <div class="pill-count" id="count5">-</div>
       </div>
       <div class="buffer-pill" id="pill10" onclick="selectRadius(10)">
-        <div class="pill-km">10 KM Radius</div>
+        <div class="pill-km">10 KM RADIUS</div>
         <div class="pill-count" id="count10">-</div>
       </div>
     </div>
 
-    <div id="listSection" style="display:none;">
+    <!-- Hopping Checklist Section -->
+    <div id="listSection">
       <div style="font-size: 11px; font-weight: 700; color: #444; margin: 4px 0;">
         Select Pandals to Hop (<span id="selectedCount">0</span> selected):
       </div>
@@ -201,34 +187,32 @@
   </div>
 
   <script>
-    // Safe standard tile layer (No API key needed)
     const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
-    const TILE_ATTRIB = '&copy; OpenStreetMap contributors';
+    const TILE_ATTRIB = '&copy; OpenStreetMap';
 
-    const map = L.map('map', { zoomControl: false }).setView([22.565, 88.363], 13);
-    L.control.zoom({ position: 'bottomright' }).addTo(map);
-    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTRIB }).addTo(map);
+    let map = null;
+    let aoiLayer = null;
+    let originMarker = null;
+    let bufferCircle = null;
+    let pandalMarkersLayer = L.layerGroup();
 
     let allPandals = [];
-    let originCoords = null; // [lat, lng]
-    let originType = "GPS";
+    let originCoords = [22.565, 88.363]; // Default Kolkata center
+    let originType = "PIN";
     let currentRadius = 2;
     let filteredPandals = [];
     let selectedPandals = new Set();
 
-    let originMarker = null;
-    let bufferCircle = null;
-
-    let aoiMap = null;
-    let aoiMarker = null;
-    let aoiLayer = null;
+    // 1. Initialize Map inside the single container
+    map = L.map('aoiPickerContainer', { zoomControl: false }).setView(originCoords, 12);
+    L.tileLayer(TILE_URL, { maxZoom: 18, attribution: TILE_ATTRIB }).addTo(map);
+    pandalMarkersLayer.addTo(map);
 
     function parseCoords(feature) {
       if (!feature.geometry || !feature.geometry.coordinates) return [22.565, 88.363];
       let c = feature.geometry.coordinates;
       let x = parseFloat(c[0]), y = parseFloat(c[1]);
 
-      // Handle Web Mercator
       if (Math.abs(x) > 180 || Math.abs(y) > 90) {
         let lng = (x / 20037508.34) * 180;
         let lat = (y / 20037508.34) * 180;
@@ -236,12 +220,11 @@
         return [lat, lng];
       }
 
-      // Handle inverted [Lat, Lng]
       if (x >= 21 && x <= 24 && y >= 87 && y <= 90) {
         return [x, y];
       }
 
-      return [y, x]; // Standard GeoJSON [Lng, Lat] to Leaflet [Lat, Lng]
+      return [y, x];
     }
 
     function haversine(lat1, lon1, lat2, lon2) {
@@ -252,61 +235,56 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // Load pandals GeoJSON
-    fetch('./pandals_clean.geojson?v=' + Date.now())
-      .then(res => {
-        if (!res.ok) throw new Error("HTTP " + res.status);
-        return res.json();
+    // 2. Fetch AOI GeoJSON
+    fetch('./aoi.geojson?v=' + Date.now())
+      .then(res => res.json())
+      .then(data => {
+        aoiLayer = L.geoJSON(data, {
+          style: { color: "#B71C1C", weight: 2, fillColor: "#D4AF37", fillOpacity: 0.1 }
+        }).addTo(map);
+        map.fitBounds(aoiLayer.getBounds(), { padding: [10, 10] });
       })
+      .catch(err => console.warn("AOI load fallback", err));
+
+    // 3. Fetch Pandals GeoJSON
+    fetch('./pandals_clean.geojson?v=' + Date.now())
+      .then(res => res.json())
       .then(data => {
         allPandals = data.features || [];
-        document.getElementById('loader').innerText = allPandals.length + " pandals live";
-        renderPandals();
+        allPandals.forEach(p => { p.computedCoords = parseCoords(p); });
+        handleOriginSet(originCoords[0], originCoords[1], "Kolkata Central");
       })
       .catch(err => {
-        document.getElementById('loader').innerText = "Pandals load error: " + err.message;
+        document.getElementById('statusText').innerText = "Pandals load error: " + err.message;
       });
 
-    function renderPandals() {
-      allPandals.forEach(p => {
-        p.computedCoords = parseCoords(p);
-        const name = p.properties.Pandal___C || p.properties.Name || "Durga Puja Pandal";
-        const cat = p.properties.Puja_Categ || "Sarbojanin";
+    // Tap Map to Move Origin Pin
+    map.on('click', function(e) {
+      originType = "PIN";
+      document.getElementById('btnPin').classList.add('active');
+      document.getElementById('btnGPS').classList.remove('active');
+      handleOriginSet(e.latlng.lat, e.latlng.lng, `Pin (${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)})`);
+    });
 
-        const marker = L.circleMarker(p.computedCoords, {
-          radius: 6,
-          fillColor: "#B71C1C",
-          color: "#D4AF37",
-          weight: 2,
-          opacity: 1,
-          fillOpacity: 0.9
-        }).addTo(map);
-
-        const gmapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${p.computedCoords[0]},${p.computedCoords[1]}`;
-        marker.bindPopup(`
-          <div style="font-family:sans-serif; min-width: 170px;">
-            <b style="color:#B71C1C; font-size:13px;">${name}</b><br/>
-            <span style="font-size:11px; color:#555;">Category: ${cat}</span><br/>
-            <a class="popup-route-btn" href="${gmapsUrl}" target="_blank">🧭 Navigate in Google Maps</a>
-          </div>
-        `);
-        p.marker = marker;
-      });
+    function activatePinDrop() {
+      originType = "PIN";
+      document.getElementById('btnPin').classList.add('active');
+      document.getElementById('btnGPS').classList.remove('active');
+      document.getElementById('statusText').innerText = "Tap inside the map to move origin:";
     }
 
     function setOriginGPS() {
       originType = "GPS";
       document.getElementById('btnGPS').classList.add('active');
       document.getElementById('btnPin').classList.remove('active');
-      document.getElementById('aoiPickerContainer').style.display = 'none';
       document.getElementById('statusText').innerText = "Locating GPS...";
 
       navigator.geolocation.getCurrentPosition(
-        pos => handleOriginSet(pos.coords.latitude, pos.coords.longitude, "Live GPS"),
+        pos => handleOriginSet(pos.coords.latitude, pos.coords.longitude, "Your Live Location"),
         err => {
           navigator.geolocation.getCurrentPosition(
             pos => handleOriginSet(pos.coords.latitude, pos.coords.longitude, "Network Location"),
-            err2 => { document.getElementById('statusText').innerText = "GPS unavailable. Use search or AOI pin."; },
+            err2 => { document.getElementById('statusText').innerText = "GPS unavailable. Tap on the map."; },
             { enableHighAccuracy: false, timeout: 10000 }
           );
         },
@@ -314,73 +292,28 @@
       );
     }
 
-    function toggleAOIPicker() {
-      originType = "PIN";
-      document.getElementById('btnPin').classList.add('active');
-      document.getElementById('btnGPS').classList.remove('active');
-      const box = document.getElementById('aoiPickerContainer');
-      box.style.display = 'block';
-      document.getElementById('statusText').innerText = "Tap inside AOI to place pin:";
-
-      if (!aoiMap) {
-        aoiMap = L.map('aoiPickerContainer', { zoomControl: false, attributionControl: false });
-        L.tileLayer(TILE_URL, { maxZoom: 18 }).addTo(aoiMap);
-
-        fetch('./aoi.geojson?v=' + Date.now())
-          .then(res => {
-            if (!res.ok) throw new Error("HTTP " + res.status);
-            return res.json();
-          })
-          .then(aoiData => {
-            aoiLayer = L.geoJSON(aoiData, {
-              style: { color: "#B71C1C", weight: 2, fillColor: "#D4AF37", fillOpacity: 0.15 }
-            }).addTo(aoiMap);
-            aoiMap.fitBounds(aoiLayer.getBounds(), { padding: [6, 6] });
-          })
-          .catch(err => {
-            console.warn("aoi.geojson load failed, using Kolkata fallback", err);
-            aoiMap.setView([22.565, 88.363], 11);
-          });
-
-        aoiMap.on('click', function(e) {
-          if (aoiMarker) aoiMarker.setLatLng(e.latlng);
-          else aoiMarker = L.marker(e.latlng).addTo(aoiMap);
-          handleOriginSet(e.latlng.lat, e.latlng.lng, `AOI Pin (${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)})`);
-        });
-      }
-
-      setTimeout(() => {
-        if (aoiMap) {
-          aoiMap.invalidateSize();
-          if (aoiLayer) aoiMap.fitBounds(aoiLayer.getBounds(), { padding: [6, 6] });
-        }
-      }, 200);
-    }
-
+    // 4. Move Origin & Render Internal Buffer Graphic
     function handleOriginSet(lat, lng, label) {
       originCoords = [lat, lng];
       document.getElementById('statusText').innerText = "Origin: " + label;
 
-      if (originMarker) originMarker.setLatLng(originCoords);
-      else {
+      if (originMarker) {
+        originMarker.setLatLng(originCoords);
+      } else {
         originMarker = L.marker(originCoords, {
           icon: L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-gold.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
+            iconSize: [22, 36], iconAnchor: [11, 36]
           })
         }).addTo(map);
       }
 
-      map.panTo(originCoords);
       calculateBuffers();
     }
 
     function calculateBuffers() {
       if (!originCoords || !allPandals.length) return;
-
-      document.getElementById('bufferGroup').style.display = 'flex';
-      document.getElementById('listSection').style.display = 'block';
 
       const count2 = allPandals.filter(p => haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1]) <= 2).length;
       const count5 = allPandals.filter(p => haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1]) <= 5).length;
@@ -399,6 +332,7 @@
         document.getElementById('pill' + k).classList.toggle('selected', k === km);
       });
 
+      // Render Buffer Circle directly inside this map
       if (bufferCircle) {
         bufferCircle.setLatLng(originCoords);
         bufferCircle.setRadius(km * 1000);
@@ -407,19 +341,32 @@
           radius: km * 1000,
           color: '#B71C1C',
           fillColor: '#D4AF37',
-          fillOpacity: 0.15,
+          fillOpacity: 0.18,
           weight: 2,
-          dashArray: '5, 5'
+          dashArray: '4, 4'
         }).addTo(map);
       }
 
-      map.fitBounds(bufferCircle.getBounds(), { padding: [35, 35] });
+      map.fitBounds(bufferCircle.getBounds(), { padding: [15, 15] });
 
+      // Filter and Sort by Distance
       filteredPandals = allPandals.map(p => ({
         ...p,
         distance: haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1])
       })).filter(p => p.distance <= km)
         .sort((a, b) => a.distance - b.distance);
+
+      // Render Pandals inside this Map
+      pandalMarkersLayer.clearLayers();
+      filteredPandals.forEach(p => {
+        L.circleMarker(p.computedCoords, {
+          radius: 5,
+          fillColor: "#B71C1C",
+          color: "#D4AF37",
+          weight: 1.5,
+          fillOpacity: 0.9
+        }).bindPopup(`<b>${p.properties.Pandal___C || "Pandal"}</b><br/>${p.distance.toFixed(2)} km away`).addTo(pandalMarkersLayer);
+      });
 
       renderChecklist();
     }
@@ -482,7 +429,7 @@
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
     }
 
-    // Divided Two-Segment Search
+    // 5. Two-Segment Search (Pandals & Fast Places via Photon OpenStreetMap API)
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     let searchDebounce = null;
@@ -494,27 +441,32 @@
         searchResults.style.display = 'none';
         return;
       }
-      searchDebounce = setTimeout(() => executeDividedSearch(query), 300);
+      searchDebounce = setTimeout(() => executeSearch(query), 250);
     });
 
-    async function executeDividedSearch(query) {
+    async function executeSearch(query) {
       const qLower = query.toLowerCase();
 
-      // Segment 1: Pandals
+      // Segment 1: Local Pandals
       const matchedPandals = allPandals.filter(p => {
         const name = (p.properties.Pandal___C || p.properties.Name || "").toLowerCase();
         const address = (p.properties.Address || "").toLowerCase();
         return name.includes(qLower) || address.includes(qLower);
       }).slice(0, 5);
 
-      // Segment 2: OpenStreetMap Places
+      // Segment 2: Photon Places (CORS-friendly OpenStreetMap geocoder)
       let matchedPlaces = [];
       try {
-        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Kolkata')}&viewbox=88.22,22.68,88.46,22.42&bounded=1&limit=5`;
-        const res = await fetch(url);
-        matchedPlaces = await res.json();
-      } catch (e) {
-        console.warn("Geocoding service unavailable", e);
+        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(query + ' Kolkata')}&lat=22.565&lon=88.363&limit=5`);
+        const json = await res.json();
+        matchedPlaces = (json.features || []).map(f => ({
+          name: f.properties.name || f.properties.street || query,
+          sub: [f.properties.district, f.properties.city].filter(Boolean).join(', ') || 'Kolkata',
+          lat: f.geometry.coordinates[1],
+          lon: f.geometry.coordinates[0]
+        }));
+      } catch (err) {
+        console.warn("Place search failed", err);
       }
 
       renderDividedResults(matchedPandals, matchedPlaces);
@@ -522,7 +474,7 @@
 
     function renderDividedResults(pandals, places) {
       if (!pandals.length && !places.length) {
-        searchResults.innerHTML = '<div style="padding:10px; font-size:12px; color:#888;">No matching pandal or place found.</div>';
+        searchResults.innerHTML = '<div style="padding:10px; font-size:12px; color:#888;">No matching pandals or places found.</div>';
         searchResults.style.display = 'block';
         return;
       }
@@ -536,9 +488,9 @@
           const name = p.properties.Pandal___C || p.properties.Name;
           const cat = p.properties.Puja_Categ || "Standard";
           html += `
-            <div class="search-item" onclick="selectPandalFromSearch(${idx})">
+            <div class="search-item" onclick="selectPandalResult(${idx})">
               <b>${name}</b>
-              <span class="search-item-sub">Puja Category: ${cat}</span>
+              <span class="search-item-sub">Category: ${cat}</span>
             </div>
           `;
         });
@@ -547,11 +499,10 @@
       if (places.length) {
         html += '<div class="search-segment-title">📍 Places & Landmarks</div>';
         places.forEach(pl => {
-          const title = pl.display_name.split(',')[0];
           html += `
-            <div class="search-item" onclick="selectPlaceAsOrigin(${pl.lat}, ${pl.lon}, '${title.replace(/'/g, "\\'")}')">
-              <b>📍 ${title}</b>
-              <span class="search-item-sub">${pl.display_name}</span>
+            <div class="search-item" onclick="selectPlaceResult(${pl.lat}, ${pl.lon}, '${pl.name.replace(/'/g, "\\'")}')">
+              <b>📍 ${pl.name}</b>
+              <span class="search-item-sub">${pl.sub}</span>
             </div>
           `;
         });
@@ -561,15 +512,19 @@
       searchResults.style.display = 'block';
     }
 
-    function selectPandalFromSearch(idx) {
+    // Selecting a Pandal -> Centers this map window, places origin, and calculates nearby hops
+    function selectPandalResult(idx) {
       const p = allPandals[idx];
       searchResults.style.display = 'none';
       searchInput.value = p.properties.Pandal___C || p.properties.Name;
-      map.setView(p.computedCoords, 16);
-      p.marker.openPopup();
+      originType = "PIN";
+      document.getElementById('btnPin').classList.add('active');
+      document.getElementById('btnGPS').classList.remove('active');
+      handleOriginSet(p.computedCoords[0], p.computedCoords[1], p.properties.Pandal___C || "Selected Pandal");
     }
 
-    function selectPlaceAsOrigin(lat, lng, name) {
+    // Selecting a Place -> Centers this map window, places origin, and calculates nearby hops
+    function selectPlaceResult(lat, lng, name) {
       searchResults.style.display = 'none';
       searchInput.value = name;
       originType = "PIN";
