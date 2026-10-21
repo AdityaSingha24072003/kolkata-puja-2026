@@ -122,7 +122,7 @@
 
     /* Map Window */
     #aoiPickerContainer {
-      height: 205px;
+      height: 220px;
       width: 100%;
       border: 1.5px solid var(--royal-gold);
       border-radius: 6px;
@@ -248,7 +248,7 @@
       <div id="searchResults" class="search-results"></div>
     </div>
 
-    <!-- Origin Buttons -->
+    <!-- Origin Action Buttons -->
     <div class="btn-row">
       <button class="action-btn" id="btnGPS" onclick="setOriginGPS()">📍 My Location</button>
       <button class="action-btn active" id="btnPin" onclick="activatePinDrop()">📌 Tap in AOI</button>
@@ -258,7 +258,7 @@
     <!-- Map Window -->
     <div id="aoiPickerContainer"></div>
 
-    <!-- Buffer Pills -->
+    <!-- Buffer Radius Controls -->
     <div class="buffer-pill-group" id="bufferGroup">
       <div class="buffer-pill selected" id="pill2" onclick="selectRadius(2)">
         <div class="pill-km">2 KM RADIUS</div>
@@ -301,7 +301,7 @@
     let pandalMarkersLayer = L.layerGroup();
 
     let allPandals = [];
-    let originCoords = null;
+    let originCoords = null; // No point initially
     let originType = "PIN";
     let currentRadius = 2;
     let filteredPandals = [];
@@ -309,13 +309,14 @@
     let currentAnimatedRadius = 2000;
     let animFrameId = null;
 
-    // 1. Initialize Map with unlocked minimum zoom so it can zoom out fully
+    // 1. Initial view: Zooms straight into Central Kolkata (Esplanade / BBD Bagh)
     map = L.map('aoiPickerContainer', {
       zoomControl: false,
       attributionControl: false,
-      minZoom: 10,
+      zoomSnap: 0.1,
+      zoomDelta: 0.5,
       maxZoom: 18
-    }).setView([22.565, 88.363], 12);
+    }).setView([22.565, 88.363], 12.5);
 
     L.tileLayer(TILE_URL, { maxZoom: 18 }).addTo(map);
     pandalMarkersLayer.addTo(map);
@@ -377,7 +378,7 @@
       return false;
     }
 
-    // 2. Fetch AOI GeoJSON (Renders boundary, allows broad camera zoom)
+    // 2. Fetch AOI & Dynamically Set Maximum Zoom-Out Limit
     fetch('./aoi.geojson?v=' + Date.now())
       .then(res => res.json())
       .then(data => {
@@ -391,10 +392,20 @@
           }
         }).addTo(map);
 
-        map.fitBounds(aoiLayer.getBounds(), { padding: [10, 10] });
+        // Pad boundary by 35% to guarantee full AOI + 10km buffer can be seen
+        const paddedBounds = aoiLayer.getBounds().pad(0.35);
+
+        // Dynamically compute exact zoom-out floor for this container
+        const calculatedMinZoom = map.getBoundsZoom(paddedBounds);
+        map.setMinZoom(calculatedMinZoom);
+        map.setMaxBounds(paddedBounds.pad(0.15)); // Prevents wandering off to other states
+
+        // Keep initial central focus without moving camera
+        map.setView([22.565, 88.363], 12.5);
       })
       .catch(err => {
-        console.warn("aoi.geojson fallback", err);
+        console.warn("aoi.geojson load failed", err);
+        map.setMinZoom(10);
       });
 
     // 3. Fetch Pandals
@@ -414,7 +425,7 @@
       el.className = "status-msg" + (isError ? " error" : "");
     }
 
-    // 4. Map Click
+    // 4. Map Click (AOI Boundary Enforced)
     map.on('click', function(e) {
       const lat = e.latlng.lat;
       const lng = e.latlng.lng;
@@ -495,7 +506,7 @@
       document.getElementById('btnRoute').disabled = true;
     }
 
-    // 5. Origin Setter with Fluid Camera Zoom Out
+    // 5. Origin Setter & Pulsing Buffer Animation
     function handleOriginSet(lat, lng, label) {
       originCoords = [lat, lng];
       showStatus("Origin: " + label);
@@ -529,17 +540,16 @@
       selectRadius(currentRadius);
     }
 
-    // Animated smooth radius expansion
     function animateRadiusTo(targetRadiusMeters) {
       if (animFrameId) cancelAnimationFrame(animFrameId);
       const startRadius = currentAnimatedRadius || targetRadiusMeters;
       const startTime = performance.now();
-      const duration = 300;
+      const duration = 280;
 
       function step(now) {
         const elapsed = now - startTime;
         const progress = Math.min(elapsed / duration, 1);
-        const ease = 1 - Math.pow(1 - progress, 3); // ease-out cubic
+        const ease = 1 - Math.pow(1 - progress, 3);
         const r = startRadius + (targetRadiusMeters - startRadius) * ease;
         currentAnimatedRadius = r;
         if (bufferCircle) bufferCircle.setRadius(r);
@@ -579,7 +589,7 @@
       // Smoothly zoom out the camera to frame the full circle with comfortable padding
       const targetBounds = L.latLng(originCoords[0], originCoords[1]).toBounds(targetRadiusMeters * 2);
       map.flyToBounds(targetBounds, {
-        padding: [16, 16],
+        padding: [14, 14],
         duration: 0.65,
         easeLinearity: 0.25
       });
@@ -674,7 +684,7 @@
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
     }
 
-    // 6. Search Input
+    // 6. Search Input (Pandals & Places with AOI Check)
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     let searchDebounce = null;
