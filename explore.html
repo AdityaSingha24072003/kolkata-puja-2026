@@ -30,7 +30,6 @@
 
     #map { width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 1; }
 
-    /* Top Divided Search Box */
     .app-header {
       position: absolute; top: 12px; left: 12px; right: 12px;
       max-width: 440px; z-index: 1000;
@@ -72,7 +71,6 @@
     .search-item:hover { background: #FFF3D6; }
     .search-item-sub { font-size: 10px; color: #666; margin-top: 2px; }
 
-    /* Explore Drawer Card */
     .drawer-card {
       position: absolute; bottom: 16px; left: 12px; right: 12px;
       max-width: 420px; background: #FFFFFF;
@@ -101,7 +99,6 @@
     }
     .action-btn.active { background: var(--durga-red); color: #FFFFFF; }
 
-    /* AOI Mini-Picker Window */
     #aoiPickerContainer {
       display: none; height: 180px; width: 100%;
       border: 1.5px solid var(--royal-gold); border-radius: 6px;
@@ -152,10 +149,8 @@
 </head>
 <body>
 
-  <!-- Main Background Map -->
   <div id="map"></div>
 
-  <!-- Divided Two-Segment Search Header -->
   <div class="app-header">
     <div class="search-container">
       <span style="font-size: 15px; margin-right: 4px;">🔍</span>
@@ -164,7 +159,6 @@
     </div>
   </div>
 
-  <!-- Explore Drawer Panel -->
   <div class="drawer-card">
     <div class="drawer-title">
       <span>🪔 Explore Pandals</span>
@@ -177,10 +171,8 @@
     </div>
     <div id="statusText" style="font-size: 11px; color: #666; margin-bottom: 4px;">Select origin or search a place above.</div>
 
-    <!-- Clean AOI Pop-up Window -->
     <div id="aoiPickerContainer"></div>
 
-    <!-- Buffer Radius Controls -->
     <div class="buffer-pill-group" id="bufferGroup">
       <div class="buffer-pill selected" id="pill2" onclick="selectRadius(2)">
         <div class="pill-km">2 KM Radius</div>
@@ -196,7 +188,6 @@
       </div>
     </div>
 
-    <!-- Checkbox Checklist -->
     <div id="listSection" style="display:none;">
       <div style="font-size: 11px; font-weight: 700; color: #444; margin: 4px 0;">
         Select Pandals to Hop (<span id="selectedCount">0</span> selected):
@@ -210,14 +201,13 @@
   </div>
 
   <script>
-    // 1. Initialize Main Leaflet Map
+    // Safe standard tile layer (No API key needed)
+    const TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+    const TILE_ATTRIB = '&copy; OpenStreetMap contributors';
+
     const map = L.map('map', { zoomControl: false }).setView([22.565, 88.363], 13);
     L.control.zoom({ position: 'bottomright' }).addTo(map);
-
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 19,
-      attribution: '© OpenStreetMap'
-    }).addTo(map);
+    L.tileLayer(TILE_URL, { maxZoom: 19, attribution: TILE_ATTRIB }).addTo(map);
 
     let allPandals = [];
     let originCoords = null; // [lat, lng]
@@ -233,11 +223,12 @@
     let aoiMarker = null;
     let aoiLayer = null;
 
-    // Coordinate parser handling WGS84, inverted [Lat, Lng], and Web Mercator meters
     function parseCoords(feature) {
+      if (!feature.geometry || !feature.geometry.coordinates) return [22.565, 88.363];
       let c = feature.geometry.coordinates;
       let x = parseFloat(c[0]), y = parseFloat(c[1]);
 
+      // Handle Web Mercator
       if (Math.abs(x) > 180 || Math.abs(y) > 90) {
         let lng = (x / 20037508.34) * 180;
         let lat = (y / 20037508.34) * 180;
@@ -245,11 +236,12 @@
         return [lat, lng];
       }
 
+      // Handle inverted [Lat, Lng]
       if (x >= 21 && x <= 24 && y >= 87 && y <= 90) {
         return [x, y];
       }
 
-      return [y, x];
+      return [y, x]; // Standard GeoJSON [Lng, Lat] to Leaflet [Lat, Lng]
     }
 
     function haversine(lat1, lon1, lat2, lon2) {
@@ -260,19 +252,21 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
-    // 2. Fetch Pandal Data
-    fetch('./pandals_clean.geojson')
-      .then(res => res.json())
+    // Load pandals GeoJSON
+    fetch('./pandals_clean.geojson?v=' + Date.now())
+      .then(res => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
       .then(data => {
-        allPandals = data.features;
+        allPandals = data.features || [];
         document.getElementById('loader').innerText = allPandals.length + " pandals live";
         renderPandals();
       })
       .catch(err => {
-        document.getElementById('loader').innerText = "Load error";
+        document.getElementById('loader').innerText = "Pandals load error: " + err.message;
       });
 
-    // 3. Render Pandal Points on Main Map
     function renderPandals() {
       allPandals.forEach(p => {
         p.computedCoords = parseCoords(p);
@@ -300,20 +294,19 @@
       });
     }
 
-    // 4. Live GPS with Fallback
     function setOriginGPS() {
       originType = "GPS";
       document.getElementById('btnGPS').classList.add('active');
       document.getElementById('btnPin').classList.remove('active');
       document.getElementById('aoiPickerContainer').style.display = 'none';
-      document.getElementById('statusText').innerText = "Locating GPS position...";
+      document.getElementById('statusText').innerText = "Locating GPS...";
 
       navigator.geolocation.getCurrentPosition(
-        pos => handleOriginSet(pos.coords.latitude, pos.coords.longitude, "Your Live Location"),
+        pos => handleOriginSet(pos.coords.latitude, pos.coords.longitude, "Live GPS"),
         err => {
           navigator.geolocation.getCurrentPosition(
             pos => handleOriginSet(pos.coords.latitude, pos.coords.longitude, "Network Location"),
-            err2 => { document.getElementById('statusText').innerText = "GPS unavailable. Pick a place or tap in AOI."; },
+            err2 => { document.getElementById('statusText').innerText = "GPS unavailable. Use search or AOI pin."; },
             { enableHighAccuracy: false, timeout: 10000 }
           );
         },
@@ -321,36 +314,31 @@
       );
     }
 
-    // 5. AOI Mini-Picker Window (Loads aoi.geojson)
     function toggleAOIPicker() {
       originType = "PIN";
       document.getElementById('btnPin').classList.add('active');
       document.getElementById('btnGPS').classList.remove('active');
       const box = document.getElementById('aoiPickerContainer');
       box.style.display = 'block';
-      document.getElementById('statusText').innerText = "Tap inside the Kolkata AOI to set origin:";
+      document.getElementById('statusText').innerText = "Tap inside AOI to place pin:";
 
       if (!aoiMap) {
         aoiMap = L.map('aoiPickerContainer', { zoomControl: false, attributionControl: false });
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 18 }).addTo(aoiMap);
+        L.tileLayer(TILE_URL, { maxZoom: 18 }).addTo(aoiMap);
 
-        // Fetch user-uploaded exact AOI GeoJSON
-        fetch('./aoi.geojson')
-          .then(res => res.json())
+        fetch('./aoi.geojson?v=' + Date.now())
+          .then(res => {
+            if (!res.ok) throw new Error("HTTP " + res.status);
+            return res.json();
+          })
           .then(aoiData => {
             aoiLayer = L.geoJSON(aoiData, {
-              style: {
-                color: "#B71C1C",
-                weight: 2,
-                fillColor: "#D4AF37",
-                fillOpacity: 0.12
-              }
+              style: { color: "#B71C1C", weight: 2, fillColor: "#D4AF37", fillOpacity: 0.15 }
             }).addTo(aoiMap);
-
             aoiMap.fitBounds(aoiLayer.getBounds(), { padding: [6, 6] });
           })
           .catch(err => {
-            console.warn("aoi.geojson load failed, using fallback view", err);
+            console.warn("aoi.geojson load failed, using Kolkata fallback", err);
             aoiMap.setView([22.565, 88.363], 11);
           });
 
@@ -359,15 +347,16 @@
           else aoiMarker = L.marker(e.latlng).addTo(aoiMap);
           handleOriginSet(e.latlng.lat, e.latlng.lng, `AOI Pin (${e.latlng.lat.toFixed(3)}, ${e.latlng.lng.toFixed(3)})`);
         });
-      } else {
-        setTimeout(() => {
+      }
+
+      setTimeout(() => {
+        if (aoiMap) {
           aoiMap.invalidateSize();
           if (aoiLayer) aoiMap.fitBounds(aoiLayer.getBounds(), { padding: [6, 6] });
-        }, 150);
-      }
+        }
+      }, 200);
     }
 
-    // Universal Origin Setter
     function handleOriginSet(lat, lng, label) {
       originCoords = [lat, lng];
       document.getElementById('statusText').innerText = "Origin: " + label;
@@ -387,7 +376,6 @@
       calculateBuffers();
     }
 
-    // 6. Buffer Computation & Graphics
     function calculateBuffers() {
       if (!originCoords || !allPandals.length) return;
 
@@ -494,7 +482,7 @@
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
     }
 
-    // 7. Divided Two-Segment Search (Pandals & Places)
+    // Divided Two-Segment Search
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     let searchDebounce = null;
@@ -506,21 +494,20 @@
         searchResults.style.display = 'none';
         return;
       }
-
       searchDebounce = setTimeout(() => executeDividedSearch(query), 300);
     });
 
     async function executeDividedSearch(query) {
       const qLower = query.toLowerCase();
 
-      // Segment 1: Local Pandal Matches
+      // Segment 1: Pandals
       const matchedPandals = allPandals.filter(p => {
         const name = (p.properties.Pandal___C || p.properties.Name || "").toLowerCase();
         const address = (p.properties.Address || "").toLowerCase();
         return name.includes(qLower) || address.includes(qLower);
       }).slice(0, 5);
 
-      // Segment 2: OpenStreetMap Nominatim Places in Kolkata
+      // Segment 2: OpenStreetMap Places
       let matchedPlaces = [];
       try {
         const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query + ' Kolkata')}&viewbox=88.22,22.68,88.46,22.42&bounded=1&limit=5`;
