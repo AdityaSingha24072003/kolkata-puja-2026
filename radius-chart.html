@@ -1,187 +1,272 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Pandal Radius Bar Chart</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Kolkata Durga Puja 2026 - Radius Distribution</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+
   <style>
     :root {
-      --crimson-dark: #7A0D0D;
-      --crimson-accent: #B71C1C;
-      --marigold: #F5A623;
-      --marigold-soft: #FFF8E7;
-      --bg-panel: #FFFFFF;
-      --border-subtle: #E6DFD5;
-      --text-main: #2B2118;
-      --text-muted: #6E6259;
+      --durga-red: #B71C1C;
+      --deep-crimson: #7B0000;
+      --royal-gold: #D4AF37;
+      --gold-soft: #FFF9E6;
+      --bg-cream: #FFFDF9;
+      --dark-text: #212121;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body {
-      background-color: var(--bg-panel);
-      color: var(--text-main);
-      padding: 14px;
-      height: 100vh;
+    html, body {
+      width: 100%;
+      height: 100%;
+      background: #FFFFFF;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      color: var(--dark-text);
+      overflow: hidden;
+    }
+
+    .sidebar-card {
+      width: 100%;
+      height: 100%;
+      padding: 10px 10px 8px 10px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      background: #FFFFFF;
     }
 
-    .header {
-      border-bottom: 2px solid var(--crimson-dark);
-      padding-bottom: 8px;
-      margin-bottom: 10px;
+    .header-box {
+      border-bottom: 1.5px solid var(--royal-gold);
+      padding-bottom: 6px;
+      margin-bottom: 6px;
     }
 
-    .header h2 {
-      font-size: 14px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-      color: var(--crimson-dark);
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+
+    .chart-title {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--durga-red);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .active-tag {
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--deep-crimson);
+      background: var(--gold-soft);
+      border: 1px solid var(--royal-gold);
+      padding: 2px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+    }
+
+    .origin-sub {
+      margin-top: 4px;
+      font-size: 11px;
+      color: #555555;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chart-area {
+      position: relative;
+      flex: 1;
+      min-height: 160px;
+      width: 100%;
+      background: var(--bg-cream);
+      border: 1px solid #F1E2BE;
+      border-radius: 6px;
+      padding: 10px 8px 4px 6px;
+    }
+
+    .footer-pills {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .mini-stat {
+      flex: 1;
+      background: var(--gold-soft);
+      border: 1.5px solid var(--royal-gold);
+      border-radius: 6px;
+      padding: 4px 2px;
+      text-align: center;
+      transition: background 0.2s ease;
+    }
+
+    .mini-stat.selected {
+      background: var(--royal-gold);
+      color: var(--deep-crimson);
+    }
+
+    .mini-stat-label {
+      font-size: 9px;
+      font-weight: 800;
       text-transform: uppercase;
     }
 
-    .origin-badge {
-      display: inline-block;
-      margin-top: 4px;
-      font-size: 11px;
-      color: var(--text-muted);
-      background: var(--marigold-soft);
-      border: 1px solid #F3D19E;
-      padding: 2px 8px;
-      border-radius: 4px;
+    .mini-stat-val {
+      font-size: 13px;
+      font-weight: 900;
+      color: var(--durga-red);
     }
 
-    .chart-wrapper {
-      position: relative;
-      flex-grow: 1;
-      min-height: 220px;
-      width: 100%;
-    }
-
-    .summary-strip {
-      display: flex;
-      justify-content: space-between;
-      gap: 6px;
-      margin-top: 10px;
-      padding-top: 8px;
-      border-top: 1px solid var(--border-subtle);
-      font-size: 11px;
-      text-align: center;
-    }
-
-    .stat-pill {
-      flex: 1;
-      background: #FAF8F5;
-      border: 1px solid var(--border-subtle);
-      border-radius: 6px;
-      padding: 6px 4px;
-    }
-
-    .stat-pill strong {
-      display: block;
-      font-size: 14px;
-      color: var(--crimson-dark);
+    .mini-stat.selected .mini-stat-val {
+      color: var(--deep-crimson);
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h2>Pandal Density by Radius</h2>
-    <div class="origin-badge" id="originLabel">Tap inside Kolkata AOI to update</div>
-  </div>
+  <div class="sidebar-card">
+    <div class="header-box">
+      <div class="title-row">
+        <span class="chart-title">🪔 Pandals by Radius</span>
+        <span class="active-tag" id="activeRadiusTag">2 KM ACTIVE</span>
+      </div>
+      <div class="origin-sub" id="originDisplay">Tap inside Kolkata AOI to set origin</div>
+    </div>
 
-  <div class="chart-wrapper">
-    <canvas id="radiusChart"></canvas>
-  </div>
+    <div class="chart-area">
+      <canvas id="pandalBarChart"></canvas>
+    </div>
 
-  <div class="summary-strip">
-    <div class="stat-pill">2 km<strong id="val2">-</strong></div>
-    <div class="stat-pill">5 km<strong id="val5">-</strong></div>
-    <div class="stat-pill">10 km<strong id="val10">-</strong></div>
+    <div class="footer-pills">
+      <div class="mini-stat selected" id="statPill2">
+        <div class="mini-stat-label">2 KM</div>
+        <div class="mini-stat-val" id="statVal2">-</div>
+      </div>
+      <div class="mini-stat" id="statPill5">
+        <div class="mini-stat-label">5 KM</div>
+        <div class="mini-stat-val" id="statVal5">-</div>
+      </div>
+      <div class="mini-stat" id="statPill10">
+        <div class="mini-stat-label">10 KM</div>
+        <div class="mini-stat-val" id="statVal10">-</div>
+      </div>
+    </div>
   </div>
 
   <script>
-    const ctx = document.getElementById('radiusChart').getContext('2d');
+    Chart.register(ChartDataLabels);
 
-    const radiusChart = new Chart(ctx, {
+    const ctx = document.getElementById('pandalBarChart').getContext('2d');
+
+    const pandalChart = new Chart(ctx, {
       type: 'bar',
       data: {
         labels: ['2 KM', '5 KM', '10 KM'],
         datasets: [{
           label: 'Pandals',
           data: [0, 0, 0],
-          backgroundColor: [
-            '#F5A623', // Marigold (matches 2 KM active card)
-            '#C62828', // Festive Red
-            '#7A0D0D'  // Deep Crimson (matches dashboard header)
-          ],
-          borderColor: [
-            '#D48806',
-            '#8E0000',
-            '#4A0000'
-          ],
+          backgroundColor: ['#D4AF37', '#B71C1C', '#7B0000'],
+          borderColor: ['#8B0000', '#7B0000', '#4A0000'],
           borderWidth: 1.5,
           borderRadius: 6,
-          barPercentage: 0.55
+          barPercentage: 0.56
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: { top: 20 }
+        },
         plugins: {
           legend: { display: false },
+          datalabels: {
+            anchor: 'end',
+            align: 'end',
+            offset: 2,
+            color: '#7B0000',
+            font: { weight: '800', size: 11 },
+            formatter: (val) => (val > 0 ? val : '')
+          },
           tooltip: {
-            backgroundColor: '#2B2118',
-            titleColor: '#F5A623',
+            backgroundColor: '#212121',
+            titleColor: '#D4AF37',
             bodyColor: '#FFFFFF',
             callbacks: {
-              label: (context) => ` ${context.parsed.y} Pandals`
+              label: (context) => ` ${context.parsed.y} Pandals within ${context.label}`
             }
           }
         },
         scales: {
           y: {
             beginAtZero: true,
-            ticks: { precision: 0, color: '#6E6259', font: { size: 11 } },
-            grid: { color: '#EFECE6' }
+            ticks: {
+              precision: 0,
+              color: '#666666',
+              font: { size: 10, weight: '600' }
+            },
+            grid: { color: '#F1E2BE' }
           },
           x: {
-            ticks: { color: '#2B2118', font: { size: 11, weight: 'bold' } },
+            ticks: {
+              color: '#212121',
+              font: { size: 11, weight: '800' }
+            },
             grid: { display: false }
           }
         }
       }
     });
 
-    function applyUpdate(data) {
-      if (!data || !Array.isArray(data.counts)) return;
-      const [c2, c5, c10] = data.counts;
+    function renderChartState(payload) {
+      if (!payload) return;
 
-      radiusChart.data.datasets[0].data = [c2, c5, c10];
-      radiusChart.update();
+      const hasOrigin = Boolean(payload.hasOrigin);
+      const counts = Array.isArray(payload.counts) ? payload.counts : [0, 0, 0];
+      const activeKm = payload.selectedRadius || 2;
 
-      document.getElementById('val2').textContent = c2;
-      document.getElementById('val5').textContent = c5;
-      document.getElementById('val10').textContent = c10;
-      if (data.origin) {
-        document.getElementById('originLabel').textContent = `Origin: ${data.origin}`;
-      }
+      document.getElementById('originDisplay').textContent =
+        hasOrigin ? `Origin: ${payload.origin}` : 'Tap inside Kolkata AOI to set origin';
+
+      document.getElementById('activeRadiusTag').textContent = `${activeKm} KM ACTIVE`;
+
+      [2, 5, 10].forEach((km, idx) => {
+        document.getElementById(`statPill${km}`).classList.toggle('selected', km === activeKm);
+        document.getElementById(`statVal${km}`).textContent = hasOrigin ? counts[idx] : '-';
+      });
+
+      // Highlight selected radius bar in Royal Gold, others in Durga Red / Deep Crimson
+      pandalChart.data.datasets[0].backgroundColor = [2, 5, 10].map((km) =>
+        km === activeKm ? '#D4AF37' : (km === 10 ? '#7B0000' : '#B71C1C')
+      );
+
+      pandalChart.data.datasets[0].data = hasOrigin ? counts : [0, 0, 0];
+      pandalChart.update();
     }
 
-    // Listen for live updates from the minimap iframe on the same domain
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'pujo_radius_data' && e.newValue) {
-        applyUpdate(JSON.parse(e.newValue));
+    // Live sync whenever the minimap iframe updates localStorage
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'pujo_radius_data' && event.newValue) {
+        try {
+          renderChartState(JSON.parse(event.newValue));
+        } catch (err) {
+          console.warn('Invalid radius payload:', err);
+        }
       }
     });
 
-    // Load last saved state on initial render
-    const existing = localStorage.getItem('pujo_radius_data');
-    if (existing) {
-      applyUpdate(JSON.parse(existing));
+    // Hydrate from existing state if minimap was already clicked
+    try {
+      const saved = localStorage.getItem('pujo_radius_data');
+      if (saved) renderChartState(JSON.parse(saved));
+    } catch (err) {
+      console.warn('Initial read warning:', err);
     }
   </script>
 </body>
