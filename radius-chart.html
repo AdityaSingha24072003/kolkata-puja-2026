@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pandal Radius Bar Chart</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --crimson-dark: #7A0D0D;
+      --crimson-accent: #B71C1C;
+      --marigold: #F5A623;
+      --marigold-soft: #FFF8E7;
+      --bg-panel: #FFFFFF;
+      --border-subtle: #E6DFD5;
+      --text-main: #2B2118;
+      --text-muted: #6E6259;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+    body {
+      background-color: var(--bg-panel);
+      color: var(--text-main);
+      padding: 14px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .header {
+      border-bottom: 2px solid var(--crimson-dark);
+      padding-bottom: 8px;
+      margin-bottom: 10px;
+    }
+
+    .header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      color: var(--crimson-dark);
+      text-transform: uppercase;
+    }
+
+    .origin-badge {
+      display: inline-block;
+      margin-top: 4px;
+      font-size: 11px;
+      color: var(--text-muted);
+      background: var(--marigold-soft);
+      border: 1px solid #F3D19E;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
+    .chart-wrapper {
+      position: relative;
+      flex-grow: 1;
+      min-height: 220px;
+      width: 100%;
+    }
+
+    .summary-strip {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .stat-pill {
+      flex: 1;
+      background: #FAF8F5;
+      border: 1px solid var(--border-subtle);
+      border-radius: 6px;
+      padding: 6px 4px;
+    }
+
+    .stat-pill strong {
+      display: block;
+      font-size: 14px;
+      color: var(--crimson-dark);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>Pandal Density by Radius</h2>
+    <div class="origin-badge" id="originLabel">Tap inside Kolkata AOI to update</div>
+  </div>
+
+  <div class="chart-wrapper">
+    <canvas id="radiusChart"></canvas>
+  </div>
+
+  <div class="summary-strip">
+    <div class="stat-pill">2 km<strong id="val2">-</strong></div>
+    <div class="stat-pill">5 km<strong id="val5">-</strong></div>
+    <div class="stat-pill">10 km<strong id="val10">-</strong></div>
+  </div>
+
+  <script>
+    const ctx = document.getElementById('radiusChart').getContext('2d');
+
+    const radiusChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['2 KM', '5 KM', '10 KM'],
+        datasets: [{
+          label: 'Pandals',
+          data: [0, 0, 0],
+          backgroundColor: [
+            '#F5A623', // Marigold (matches 2 KM active card)
+            '#C62828', // Festive Red
+            '#7A0D0D'  // Deep Crimson (matches dashboard header)
+          ],
+          borderColor: [
+            '#D48806',
+            '#8E0000',
+            '#4A0000'
+          ],
+          borderWidth: 1.5,
+          borderRadius: 6,
+          barPercentage: 0.55
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#2B2118',
+            titleColor: '#F5A623',
+            bodyColor: '#FFFFFF',
+            callbacks: {
+              label: (context) => ` ${context.parsed.y} Pandals`
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { precision: 0, color: '#6E6259', font: { size: 11 } },
+            grid: { color: '#EFECE6' }
+          },
+          x: {
+            ticks: { color: '#2B2118', font: { size: 11, weight: 'bold' } },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+
+    function applyUpdate(data) {
+      if (!data || !Array.isArray(data.counts)) return;
+      const [c2, c5, c10] = data.counts;
+
+      radiusChart.data.datasets[0].data = [c2, c5, c10];
+      radiusChart.update();
+
+      document.getElementById('val2').textContent = c2;
+      document.getElementById('val5').textContent = c5;
+      document.getElementById('val10').textContent = c10;
+      if (data.origin) {
+        document.getElementById('originLabel').textContent = `Origin: ${data.origin}`;
+      }
+    }
+
+    // Listen for live updates from the minimap iframe on the same domain
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'pujo_radius_data' && e.newValue) {
+        applyUpdate(JSON.parse(e.newValue));
+      }
+    });
+
+    // Load last saved state on initial render
+    const existing = localStorage.getItem('pujo_radius_data');
+    if (existing) {
+      applyUpdate(JSON.parse(existing));
+    }
+  </script>
+</body>
+</html>
