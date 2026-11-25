@@ -187,7 +187,7 @@
 
     /* Pandal Checklist Section */
     #listSection {
-      display: none; /* Hidden until origin is selected and pandals exist */
+      display: none;
       margin-top: 4px;
     }
 
@@ -337,12 +337,30 @@
 
     let allPandals = [];
     let originCoords = null;
+    let originLabelText = "";
     let originType = "PIN";
     let currentRadius = 2;
+    let latestCounts = [0, 0, 0];
     let filteredPandals = [];
     let selectedPandals = new Set();
     let currentAnimatedRadius = 2000;
     let animFrameId = null;
+
+    // Broadcast radius statistics to the separate Bar Chart sidebar via localStorage
+    function broadcastRadiusStats(hasOrigin = true) {
+      const payload = {
+        hasOrigin: hasOrigin,
+        counts: hasOrigin ? latestCounts : [0, 0, 0],
+        selectedRadius: currentRadius,
+        origin: hasOrigin ? originLabelText : "Tap inside Kolkata AOI to set origin",
+        timestamp: Date.now()
+      };
+      try {
+        localStorage.setItem("pujo_radius_data", JSON.stringify(payload));
+      } catch (e) {
+        console.warn("Storage sync warning:", e);
+      }
+    }
 
     // 1. Initialize Map
     map = L.map('aoiPickerContainer', {
@@ -413,20 +431,8 @@
       return false;
     }
 
-    // Comprehensive field extractors matching your exact dataset schema
-    function getPandalField(p, keys) {
-      const props = p.properties || {};
-      for (let k of keys) {
-        if (props[k] !== undefined && props[k] !== null && String(props[k]).trim() !== "") {
-          return String(props[k]).trim();
-        }
-      }
-      return "";
-    }
-
     function getPandalData(p) {
       const props = p.properties || {};
-      
       const name = props['Pandal___C'] || props['Name'] || 'Durga Puja Pandal';
       const locality = props['Locality__'] || props['Locality'] || '';
       const category = props['Puja_Categ'] || props['Puja Category'] || '';
@@ -466,6 +472,8 @@
       .then(data => {
         allPandals = data.features || [];
         allPandals.forEach(p => { p.computedCoords = parseCoords(p); });
+        // Clear any stale chart values on initial page load
+        broadcastRadiusStats(false);
       })
       .catch(err => {
         showStatus("Data load error: " + err.message, true);
@@ -548,6 +556,8 @@
 
     function resetToUnselected() {
       originCoords = null;
+      originLabelText = "";
+      latestCounts = [0, 0, 0];
       if (originMarker) { map.removeLayer(originMarker); originMarker = null; }
       if (bufferCircle) { map.removeLayer(bufferCircle); bufferCircle = null; }
       pandalMarkersLayer.clearLayers();
@@ -556,11 +566,13 @@
       document.getElementById('count10').innerText = "-";
       document.getElementById('listSection').style.display = 'none';
       document.getElementById('btnRoute').disabled = true;
+      broadcastRadiusStats(false);
     }
 
     // 5. Origin Setter & Dynamic Buffer Animation
     function handleOriginSet(lat, lng, label) {
       originCoords = [lat, lng];
+      originLabelText = label;
       showStatus("Origin: " + label);
 
       if (originMarker) {
@@ -584,6 +596,8 @@
       const count2 = allPandals.filter(p => haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1]) <= 2).length;
       const count5 = allPandals.filter(p => haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1]) <= 5).length;
       const count10 = allPandals.filter(p => haversine(originCoords[0], originCoords[1], p.computedCoords[0], p.computedCoords[1]) <= 10).length;
+
+      latestCounts = [count2, count5, count10];
 
       document.getElementById('count2').innerText = count2;
       document.getElementById('count5').innerText = count5;
@@ -620,6 +634,9 @@
       });
 
       if (!originCoords) return;
+
+      // Sync bar chart sidebar whenever radius or origin updates
+      broadcastRadiusStats(true);
 
       const targetRadiusMeters = km * 1000;
 
@@ -677,7 +694,7 @@
       renderChecklist();
     }
 
-    // 6. Checklist Renderer: Displaying Category, Locality, Theme Title, and Theme Details
+    // 6. Checklist Renderer
     function renderChecklist() {
       const section = document.getElementById('listSection');
       const box = document.getElementById('pandalChecklist');
@@ -746,7 +763,7 @@
       window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
     }
 
-    // 7. Search Input (Searches across Name, Locality, Category, and Themes)
+    // 7. Search Input
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
     let searchDebounce = null;
