@@ -83,12 +83,12 @@
     .chart-area {
       position: relative;
       flex: 1;
-      min-height: 160px;
+      min-height: 150px;
       width: 100%;
       background: var(--bg-cream);
       border: 1px solid #F1E2BE;
       border-radius: 6px;
-      padding: 10px 8px 4px 6px;
+      padding: 12px 8px 4px 6px;
     }
 
     .footer-pills {
@@ -163,6 +163,7 @@
     Chart.register(ChartDataLabels);
 
     const ctx = document.getElementById('pandalBarChart').getContext('2d');
+    let lastTimestamp = 0;
 
     const pandalChart = new Chart(ctx, {
       type: 'bar',
@@ -226,6 +227,8 @@
 
     function renderChartState(payload) {
       if (!payload) return;
+      if (payload.timestamp && payload.timestamp === lastTimestamp) return;
+      if (payload.timestamp) lastTimestamp = payload.timestamp;
 
       const hasOrigin = Boolean(payload.hasOrigin);
       const counts = Array.isArray(payload.counts) ? payload.counts : [0, 0, 0];
@@ -241,7 +244,6 @@
         document.getElementById(`statVal${km}`).textContent = hasOrigin ? counts[idx] : '-';
       });
 
-      // Highlight selected radius bar in Royal Gold, others in Durga Red / Deep Crimson
       pandalChart.data.datasets[0].backgroundColor = [2, 5, 10].map((km) =>
         km === activeKm ? '#D4AF37' : (km === 10 ? '#7B0000' : '#B71C1C')
       );
@@ -250,24 +252,27 @@
       pandalChart.update();
     }
 
-    // Live sync whenever the minimap iframe updates localStorage
+    function syncFromStorage() {
+      try {
+        const raw = localStorage.getItem('pujo_radius_data');
+        if (raw) renderChartState(JSON.parse(raw));
+      } catch (err) {
+        // Ignore storage read blocks
+      }
+    }
+
+    // 1. Standard cross-iframe storage listener
     window.addEventListener('storage', (event) => {
       if (event.key === 'pujo_radius_data' && event.newValue) {
         try {
           renderChartState(JSON.parse(event.newValue));
-        } catch (err) {
-          console.warn('Invalid radius payload:', err);
-        }
+        } catch (err) {}
       }
     });
 
-    // Hydrate from existing state if minimap was already clicked
-    try {
-      const saved = localStorage.getItem('pujo_radius_data');
-      if (saved) renderChartState(JSON.parse(saved));
-    } catch (err) {
-      console.warn('Initial read warning:', err);
-    }
+    // 2. Fallback polling every 300ms (bypasses Chrome iframe storage event suppression)
+    setInterval(syncFromStorage, 300);
+    syncFromStorage();
   </script>
 </body>
 </html>
