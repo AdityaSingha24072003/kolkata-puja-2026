@@ -533,7 +533,6 @@
           handleOriginSet(lat, lng, "Live GPS Location");
         },
         err => {
-          // Code 1 = Blocked by browser / ArcGIS Dashboard iframe sandbox
           if (err.code === 1) {
             activatePinDrop();
             showStatus("⚠️ Dashboard blocked GPS access. Tap inside AOI or search a place.", true);
@@ -754,6 +753,7 @@
       document.getElementById('btnRoute').disabled = selectedPandals.size === 0;
     }
 
+    // Direct anchor click bypasses iframe window.open() pop-up blocks
     function launchGoogleMapsRoute() {
       if (selectedPandals.size === 0) return;
       const pList = Array.from(selectedPandals);
@@ -762,15 +762,23 @@
         ? `${originCoords[0]},${originCoords[1]}`
         : "Current+Location";
 
+      let mapsUrl = "";
       if (pList.length === 1) {
         const dest = pList[0].computedCoords;
-        window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${dest[0]},${dest[1]}&travelmode=driving`, '_blank');
-        return;
+        mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${dest[0]},${dest[1]}&travelmode=driving`;
+      } else {
+        const lastPandal = pList[pList.length - 1].computedCoords;
+        const intermediate = pList.slice(0, -1).map(p => `${p.computedCoords[0]},${p.computedCoords[1]}`).join('|');
+        mapsUrl = `https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`;
       }
 
-      const lastPandal = pList[pList.length - 1].computedCoords;
-      const intermediate = pList.slice(0, -1).map(p => `${p.computedCoords[0]},${p.computedCoords[1]}`).join('|');
-      window.open(`https://www.google.com/maps/dir/?api=1&origin=${originParam}&destination=${lastPandal[0]},${lastPandal[1]}&waypoints=${encodeURIComponent(intermediate)}&travelmode=driving`, '_blank');
+      const a = document.createElement('a');
+      a.href = mapsUrl;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
 
     // 7. Search Input
